@@ -81,8 +81,6 @@ aur_install() {
     log_ok "AUR completado: $*"
 }
 
-# ==================== INSTALADORES DE VM ====================
-
 
 # ==================== INSTALADORES DE VM ====================
 install_vmware() {
@@ -119,9 +117,6 @@ install_vmware() {
     sudo vmware-modconfig --console --install-all || true
     log_ok "$TITLE ✅ OK. Ejecuta 'vmware' para setup inicial"
 }
-
-
-
 
 install_virtualbox() {
     local TITLE="VirtualBox"
