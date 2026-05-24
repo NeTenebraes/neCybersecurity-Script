@@ -1,8 +1,8 @@
 # 🧠 Script de Ciberseguridad | EXPERIMENTAL
 
-El archivo **`Cybersecurity.sh`** complementa [mi entorno de trabajo](https://github.com/NeTenebraes/neBSPWM-dotfiles), preparando Arch Linux para un flujo orientado a **ciberseguridad, bug bounty y análisis de vulnerabilidades**. Su enfoque no es estético, sino funcional: **automatiza tareas técnicas que normalmente requerirían decenas de pasos manuales**.
+El archivo **`Cybersecurity.sh`** complementa [mi entorno de trabajo](https://github.com/NeTenebraes/neBSPWM-dotfiles) preparando Arch Linux para un flujo orientado a **ciberseguridad, bug bounty y análisis de vulnerabilidades**. Su enfoque no es estético, sino funcional: **automatiza tareas técnicas que normalmente requerirían decenas de pasos manuales**.
 
-### 🔍 ¿Qué diablos hace?
+## 🔍 ¿Qué diablos hace?
 
 - **Integra herramientas de seguridad** dentro del entorno gráfico, respetando la estética del sistema *(íconos, menús en Rofi y accesos integrados en `~/.local/share/applications`)*.  
 - **Instala y configura herramientas esenciales de hacking y análisis:**
@@ -26,4 +26,10 @@ El archivo **`Cybersecurity.sh`** complementa [mi entorno de trabajo](https://gi
 
 En resumen: Un script que convierte tu instalación limpia de Arch en un **laboratorio de ciberseguridad funcional, seguro y visualmente coherente** en menos de 2min.
 
-> Recomiendo ejectuar este script **después** de [setup.sh](https://github.com/NeTenebraes/neBSPWM-dotfiles/blob/main/setup.sh) para convertir tu entorno en un laboratorio de ciberseguridad completo, coherente en diseño, rendimiento y funcionalidad.
+## ROADMAP
+Este script hace parte de un proyecto experimental de hardening y automatizacion de herramientas relacionadas a Ciberseguridad. Por el momento se tiene en mente las siguientes implementaciones:
+1. Modificar el script para hacerlo modular. 
+2. Desactivar el login por contraseña de SSH. 
+3. Desactivar el uso del usuario root.
+4. Instalar/configurar fail2ban.
+5. Activar el uso de secureboot.
