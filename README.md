@@ -1,4 +1,4 @@
-# 🧠 Script de Ciberseguridad
+# 🧠 Script de Ciberseguridad | EXPERIMENTAL
 
 El archivo **`Cybersecurity.sh`** complementa [mi entorno de trabajo](https://github.com/NeTenebraes/neBSPWM-dotfiles), preparando Arch Linux para un flujo orientado a **ciberseguridad, bug bounty y análisis de vulnerabilidades**. Su enfoque no es estético, sino funcional: **automatiza tareas técnicas que normalmente requerirían decenas de pasos manuales**.
 
