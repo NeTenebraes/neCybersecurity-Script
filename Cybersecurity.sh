@@ -91,7 +91,7 @@ install_vmware() {
         return 0
     fi
 
-    log_msg "PREPARANDO $TITLE para kernel hardened..."
+    log_msg "PREPARANDO $TITLE ..."
 
     # Dependencias de repo
     local PKGS_VMWARE_EXT=("${PKGS_VMWARE[@]}" "$KERNEL_HEADERS")
