@@ -24,8 +24,7 @@ setup_firejail_browsers() {
     setup_personal_browser "$personal_choice"
 
     echo
-    read -r -p "¿Quieres navegador BUG BOUNTY separado? [y/N] " bug_choice
-    if [[ "$bug_choice" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+    if ask_yes_no "¿Quieres navegador BUG BOUNTY separado?" "n"; then
         echo
         log_msg "Elige navegador para BUG BOUNTY:"
         printf '   %s\n' "${AVAILABLE_BROWSERS[@]}"
@@ -42,5 +41,9 @@ setup_firejail_browsers() {
 
     echo
     log_ok "✅ ¡LISTO!"
-    echo "rofi drun → '${personal_choice^} (Personal)' $( [[ "$bug_choice" =~ ^[yY] ]] && echo "| '${bug_choice_browser^} (Bug Bounty)'" )"
+    if [[ -n "${bug_choice_browser:-}" ]]; then
+        echo "rofi drun → '${personal_choice^} (Personal)' | '${bug_choice_browser^} (Bug Bounty)'"
+    else
+        echo "rofi drun → '${personal_choice^} (Personal)'"
+    fi
 }

@@ -4,10 +4,8 @@ set -euo pipefail
 
 source "$(pwd)/setup/config.sh"
 
-source "$(pwd)/setup/lib/logging.sh"
-source "$(pwd)/setup/lib/system.sh"
+source "$(pwd)/setup/lib/helpers.sh"
 source "$(pwd)/setup/lib/aur.sh"
-source "$(pwd)/setup/lib/burp.sh"
 
 source "$(pwd)/setup/modules/vmware.sh"
 source "$(pwd)/setup/modules/virtualbox.sh"
@@ -19,6 +17,7 @@ source "$(pwd)/setup/modules/firejail_bugbounty.sh"
 source "$(pwd)/setup/modules/firejail_orchestrator.sh"
 source "$(pwd)/setup/modules/firewall.sh"
 source "$(pwd)/setup/modules/dns.sh"
+source "$(pwd)/setup/modules/ssh_security.sh"
 
 KERNEL_HEADERS=$(detect_kernel_headers)
 log_msg "Kernel detectado: $(uname -r) → Usando: $KERNEL_HEADERS"
@@ -35,22 +34,21 @@ main() {
 
     setup_firewall
     setup_dns
+    setup_ssh_security
 
-    read -r -p "¿VMs (VirtualBox/VMware)? [y/N] " choice
-    case "$choice" in [Yy]*)
+    if ask_yes_no "¿VMs (VirtualBox/VMware)?" "n"; then
         install_virtualbox
         install_vmware
-    ;; *)
+    else
         log_msg "Saltando VMs"
-    esac
+    fi
 
-    read -r -p "¿Burp/Caido? [y/N] " choice
-    case "$choice" in [Yy]*)
+    if ask_yes_no "¿Burp/Caido?" "n"; then
         install_burp
         install_caido
-    ;; *)
+    else
         log_msg "Saltando Burp/Caido"
-    esac
+    fi
 
     setup_firejail_browsers
 

@@ -25,9 +25,7 @@ install_firejail() {
 setup_firejail_global() {
     echo
     log_msg "🔥 ¿Firejail GLOBAL para apps básicas? (firefox→firejail firefox)"
-    read -r -p "[y/N] " global_choice
-
-    if [[ "$global_choice" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+    if ask_yes_no "Activar Firejail GLOBAL" "n"; then
         if [[ $EUID -eq 0 ]]; then
             sudo -u "$REALUSER" firecfg --fix
         else
