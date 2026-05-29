@@ -1,0 +1,82 @@
+#!/bin/bash
+
+# ==================== DNS ====================
+setup_dns() {
+    echo "------------------------------------------------"
+    echo "🌐 CONFIGURACIÓN DNS PERSISTENTE (NM DISPATCHER)"
+    echo "------------------------------------------------"
+    echo "1) Cloudflare (1.1.1.1, 1.0.0.1)"
+    echo "2) Quad9      (9.9.9.9, 149.112.112.112)"
+    echo "3) Google     (8.8.8.8, 8.8.4.4)"
+    echo "4) Automático (ISP - DHCP)"
+    echo "5) Salir"
+    read -p " Selecciona una opción: " dns_choice
+
+    local target_ips=""
+    local provider_name=""
+
+    case "$dns_choice" in
+        1) target_ips="1.1.1.1 1.0.0.1"; provider_name="Cloudflare" ;;
+        2) target_ips="9.9.9.9 149.112.112.112"; provider_name="Quad9" ;;
+        3) target_ips="8.8.8.8 8.8.4.4"; provider_name="Google" ;;
+        4) target_ips="auto"; provider_name="ISP (Auto)" ;;
+        *) return 0 ;;
+    esac
+
+    if [[ ! -L "/etc/resolv.conf" ]]; then
+        sudo rm -f /etc/resolv.conf
+        sudo ln -sf /run/NetworkManager/resolv.conf /etc/resolv.conf
+        echo "[+] Enlace simbólico resolv.conf creado."
+    fi
+
+    echo "$target_ips" | sudo tee /etc/NetworkManager/dns-preference > /dev/null
+
+    sudo tee /etc/NetworkManager/dispatcher.d/99-dns-exclusive > /dev/null << 'EOF'
+#!/bin/bash
+# Script de persistencia DNS para evitar multiplexing
+interface=$1
+status=$2
+DNS_PREF="/etc/NetworkManager/dns-preference"
+
+if [ "$status" = "up" ] && [ -f "$DNS_PREF" ]; then
+    # Pequeña espera para asegurar que el DHCP ya entregó sus datos
+    sleep 2
+    TARGET=$(cat "$DNS_PREF")
+
+    if [ "$TARGET" != "auto" ]; then
+        # Obtener el UUID de la conexión activa en la interfaz actual
+        UUID=$(nmcli -t -f uuid,device connection show --active | grep "$interface" | cut -d: -f1)
+
+        if [ -n "$UUID" ]; then
+            # Configurar prioridad máxima y omitir DNS del ISP
+            nmcli connection modify "$UUID" \
+                ipv4.ignore-auto-dns yes \
+                ipv4.dns "$TARGET" \
+                ipv4.dns-priority -1
+
+            # Re-aplicar cambios sin reiniciar la conexión (evita bucles infinitos)
+            nmcli device reapply "$interface" > /dev/null 2>&1
+        fi
+    fi
+fi
+EOF
+
+    sudo chmod +x /etc/NetworkManager/dispatcher.d/99-dns-exclusive
+
+    local active_conn
+    active_conn=$(nmcli -t -f NAME connection show --active | head -n1)
+
+    if [[ -n "$active_conn" ]]; then
+        echo "[*] Aplicando $provider_name a la conexión activa: $active_conn"
+        if [[ "$target_ips" == "auto" ]]; then
+            sudo nmcli connection modify "$active_conn" ipv4.ignore-auto-dns no ipv4.dns "" ipv4.dns-priority 0
+        else
+            sudo nmcli connection modify "$active_conn" ipv4.ignore-auto-dns yes ipv4.dns "$target_ips" ipv4.dns-priority -1
+        fi
+
+        sudo nmcli connection up "$active_conn" > /dev/null 2>&1
+    fi
+
+    echo "✅ Éxito: DNS configurado como $provider_name."
+    echo "ℹ️ El Dispatcher Script se encargará de mantener esta configuración en cualquier red nueva."
+}
