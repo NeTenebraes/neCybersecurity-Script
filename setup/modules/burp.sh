@@ -101,10 +101,10 @@ install_burp() {
     chmod +x "$BURP_SH"
 
     cd "$USERHOME"
-    _JAVA_AWT_WM_NONREPARENTING=1 \
-    _JAVA_OPTIONS='-Dawt.toolkit.name=MToolkit' \
-    QT_QPA_PLATFORM=xcb \
-    if ! timeout 600 "$BURP_SH" --auto-install; then
+    if ! _JAVA_AWT_WM_NONREPARENTING=1 \
+        _JAVA_OPTIONS='-Dawt.toolkit.name=MToolkit' \
+        QT_QPA_PLATFORM=xcb \
+        timeout 600 "$BURP_SH" --auto-install; then
         log_err "Auto-install falló → Método manual..."
         if ask_yes_no "¿Abrir instalador GUI ahora?" "y"; then
             "$BURP_SH" || true
@@ -121,4 +121,3 @@ install_burp() {
         return 1
     fi
 }
-
