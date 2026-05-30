@@ -108,23 +108,18 @@ ensure_burp_installer() {
     echo "$burp_sh"
 }
 
-start_background_burp_install() {
+run_burp_installer() {
     local burp_sh="$1"
-    local log_file="$USERHOME/$BURP_INSTALL_DIR/burp_install.log"
+    if [[ -z "${DISPLAY:-}" ]]; then
+        log_err "DISPLAY no definido. Ejecuta el instalador manualmente: $burp_sh"
+        return 1
+    fi
 
-    nohup env \
+    env \
         _JAVA_AWT_WM_NONREPARENTING=1 \
         _JAVA_OPTIONS='-Dawt.toolkit.name=MToolkit' \
         QT_QPA_PLATFORM=xcb \
-        "$burp_sh" > "$log_file" 2>&1 &
-    disown
-}
-
-wait_for_burp_install() {
-    echo
-    log_msg "Termina la instalacion de Burp y presiona una tecla para continuar"
-    read -r -n 1
-    echo
+        "$burp_sh"
 }
 
 install_burp() {
@@ -157,10 +152,9 @@ install_burp() {
         return 0
     fi
 
-    start_background_burp_install "$BURP_SH"
-    log_ok "Instalador Burp abierto en segundo plano. Log: ~/.local/share/burp/burp_install.log"
-
-    wait_for_burp_install
+    if ! run_burp_installer "$BURP_SH"; then
+        return 0
+    fi
 
     if detect_burp_binary >/dev/null; then
         local DETECTED_BURP
