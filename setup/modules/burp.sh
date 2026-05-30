@@ -57,67 +57,102 @@ EOF
 }
 
 
+ensure_burp_installer() {
+    local version="$1"
+    local burp_dir="$USERHOME/$BURP_INSTALL_DIR"
+    local burp_sh="$burp_dir/$BURP_INSTALLER_NAME"
+    local burp_version_file="$burp_dir/burp_version.txt"
+    local min_size="$BURP_MIN_SIZE_BYTES"
+    local download_url="https://portswigger.net/burp/releases/download?product=community&version=${version}&type=Linux"
+    local needs_download="false"
+
+    mkdir -p "$burp_dir"
+
+    if [[ -f "$burp_sh" ]]; then
+        local size
+        size=$(stat -c%s "$burp_sh" 2>/dev/null || echo 0)
+        if (( size < min_size )); then
+            needs_download="true"
+        elif [[ ! -f "$burp_version_file" ]] || [[ "$(cat "$burp_version_file")" != "$version" ]]; then
+            needs_download="true"
+        fi
+    else
+        needs_download="true"
+    fi
+
+    if [[ "$needs_download" == "true" ]]; then
+        log_msg "Descargando Burp Suite $version en $burp_dir..."
+        local tmp_file="$burp_dir/burpsuite_community_linux.sh.tmp"
+        if command -v wget >/dev/null; then
+            wget -O "$tmp_file" "$download_url" || { log_err "Fallo descarga"; return 1; }
+        else
+            curl -L -o "$tmp_file" "$download_url" || { log_err "Fallo descarga"; return 1; }
+        fi
+
+        local tmp_size
+        tmp_size=$(stat -c%s "$tmp_file" 2>/dev/null || echo 0)
+        if (( tmp_size < min_size )); then
+            rm -f "$tmp_file"
+            log_err "Descarga incompleta (<100MB)."
+            return 1
+        fi
+
+        mv "$tmp_file" "$burp_sh"
+        chmod +x "$burp_sh"
+        echo "$version" > "$burp_version_file"
+        log_ok "Instalador Burp actualizado: $burp_sh"
+    else
+        log_ok "Instalador Burp ya actualizado: $burp_sh"
+    fi
+
+    echo "$burp_sh"
+}
+
+start_background_burp_install() {
+    local burp_sh="$1"
+    local log_file="$USERHOME/$BURP_INSTALL_DIR/burp_install.log"
+
+    nohup env \
+        _JAVA_AWT_WM_NONREPARENTING=1 \
+        _JAVA_OPTIONS='-Dawt.toolkit.name=MToolkit' \
+        QT_QPA_PLATFORM=xcb \
+        "$burp_sh" --auto-install > "$log_file" 2>&1 &
+    disown
+}
+
 install_burp() {
     local TITLE="Burp Suite Community"
     local BURP_VERSION
     BURP_VERSION=$(get_latest_burp_version)
-    local BURP_URL="https://portswigger.net/burp/releases/download?product=community&version=${BURP_VERSION}&type=Linux"
 
     if detect_burp_binary >/dev/null; then
         local DETECTED_BURP
         DETECTED_BURP=$(detect_burp_binary)
-        log_ok "Burp detectado: $DETECTED_BURP ✓"
+        log_ok "Burp detectado: $DETECTED_BURP"
         create_burp_wrapper "$DETECTED_BURP"
         return 0
     fi
 
     if command -v burp &>/dev/null; then
-        log_ok "Burp detectado: ~/.local/bin/burp ✓"
+        log_ok "Burp detectado: ~/.local/bin/burp"
         return 0
     fi
 
     if pacman -Q burpsuite &>/dev/null 2>&1; then
-        log_ok "Burp detectado: AUR (burpsuite) ✓"
+        log_ok "Burp detectado: AUR (burpsuite)"
         return 0
     fi
 
     if flatpak list | grep -q burp; then
-        log_ok "Burp detectado: Flatpak ✓"
+        log_ok "Burp detectado: Flatpak"
         return 0
     fi
 
-    log_ok "Burp NO detectado → Instalando..."
+    log_ok "Burp no detectado. Preparando instalador en segundo plano..."
 
-    log_msg "📥 Descargando Burp Suite $BURP_VERSION..."
-    mkdir -p "$USERHOME/Downloads" "$USERHOME/.local/bin"
-    local BURP_SH="$USERHOME/Downloads/burpsuite_community_linux.sh"
+    local BURP_SH
+    BURP_SH=$(ensure_burp_installer "$BURP_VERSION") || return 1
 
-    if command -v wget >/dev/null; then
-        wget -O "$BURP_SH" "$BURP_URL" || { log_err "Fallo descarga"; return 1; }
-    else
-        curl -L -o "$BURP_SH" "$BURP_URL" || { log_err "Fallo descarga"; return 1; }
-    fi
-
-    chmod +x "$BURP_SH"
-
-    cd "$USERHOME"
-    if ! _JAVA_AWT_WM_NONREPARENTING=1 \
-        _JAVA_OPTIONS='-Dawt.toolkit.name=MToolkit' \
-        QT_QPA_PLATFORM=xcb \
-        timeout 600 "$BURP_SH" --auto-install; then
-        log_err "Auto-install falló → Método manual..."
-        if ask_yes_no "¿Abrir instalador GUI ahora?" "y"; then
-            "$BURP_SH" || true
-        fi
-    fi
-
-    if detect_burp_binary >/dev/null; then
-        local DETECTED_BURP
-        DETECTED_BURP=$(detect_burp_binary)
-        create_burp_wrapper "$DETECTED_BURP"
-        log_ok "✅ Burp $BURP_VERSION → ~/.local/bin/burp"
-    else
-        log_err "❌ Instalación falló"
-        return 1
-    fi
+    start_background_burp_install "$BURP_SH"
+    log_ok "Instalacion Burp en segundo plano. Log: ~/.local/share/burp/burp_install.log"
 }

@@ -1,27 +1,43 @@
 #!/bin/bash
 
 # ==================== DNS ====================
-setup_dns() {
+dns_prompt() {
+    local title="$1"
+    local allow_skip="${2:-true}"
+    local dns_choice
+
     echo "------------------------------------------------"
-    echo "🌐 CONFIGURACIÓN DNS PERSISTENTE (NM DISPATCHER)"
+    echo "$title"
     echo "------------------------------------------------"
     echo "1) Cloudflare (1.1.1.1, 1.0.0.1)"
     echo "2) Quad9      (9.9.9.9, 149.112.112.112)"
     echo "3) Google     (8.8.8.8, 8.8.4.4)"
     echo "4) Automático (ISP - DHCP)"
-    echo "5) Salir"
-    read -p " Selecciona una opción: " dns_choice
+    if [[ "$allow_skip" == "true" ]]; then
+        echo "5) Saltar"
+    fi
+    read -r -p " Selecciona una opción: " dns_choice
 
-    local target_ips=""
-    local provider_name=""
+    if [[ -z "$dns_choice" ]]; then
+        dns_choice=1
+    fi
 
     case "$dns_choice" in
-        1) target_ips="1.1.1.1 1.0.0.1"; provider_name="Cloudflare" ;;
-        2) target_ips="9.9.9.9 149.112.112.112"; provider_name="Quad9" ;;
-        3) target_ips="8.8.8.8 8.8.4.4"; provider_name="Google" ;;
-        4) target_ips="auto"; provider_name="ISP (Auto)" ;;
-        *) return 0 ;;
+        1) DNS_TARGET_IPS="1.1.1.1 1.0.0.1"; DNS_PROVIDER_NAME="Cloudflare" ;;
+        2) DNS_TARGET_IPS="9.9.9.9 149.112.112.112"; DNS_PROVIDER_NAME="Quad9" ;;
+        3) DNS_TARGET_IPS="8.8.8.8 8.8.4.4"; DNS_PROVIDER_NAME="Google" ;;
+        4) DNS_TARGET_IPS="auto"; DNS_PROVIDER_NAME="ISP (Auto)" ;;
+        5) return 1 ;;
+        *) return 1 ;;
     esac
+
+    return 0
+}
+
+setup_dns() {
+    if ! dns_prompt "CONFIGURACION DNS PERSISTENTE (NM DISPATCHER)" "true"; then
+        return 0
+    fi
 
     if [[ ! -L "/etc/resolv.conf" ]]; then
         sudo rm -f /etc/resolv.conf
@@ -29,7 +45,7 @@ setup_dns() {
         echo "[+] Enlace simbólico resolv.conf creado."
     fi
 
-    echo "$target_ips" | sudo tee /etc/NetworkManager/dns-preference > /dev/null
+    echo "$DNS_TARGET_IPS" | sudo tee /etc/NetworkManager/dns-preference > /dev/null
 
     sudo tee /etc/NetworkManager/dispatcher.d/99-dns-exclusive > /dev/null << 'EOF'
 #!/bin/bash
@@ -67,16 +83,16 @@ EOF
     active_conn=$(nmcli -t -f NAME connection show --active | head -n1)
 
     if [[ -n "$active_conn" ]]; then
-        echo "[*] Aplicando $provider_name a la conexión activa: $active_conn"
-        if [[ "$target_ips" == "auto" ]]; then
+        echo "[*] Aplicando $DNS_PROVIDER_NAME a la conexión activa: $active_conn"
+        if [[ "$DNS_TARGET_IPS" == "auto" ]]; then
             sudo nmcli connection modify "$active_conn" ipv4.ignore-auto-dns no ipv4.dns "" ipv4.dns-priority 0
         else
-            sudo nmcli connection modify "$active_conn" ipv4.ignore-auto-dns yes ipv4.dns "$target_ips" ipv4.dns-priority -1
+            sudo nmcli connection modify "$active_conn" ipv4.ignore-auto-dns yes ipv4.dns "$DNS_TARGET_IPS" ipv4.dns-priority -1
         fi
 
         sudo nmcli connection up "$active_conn" > /dev/null 2>&1
     fi
 
-    echo "✅ Éxito: DNS configurado como $provider_name."
-    echo "ℹ️ El Dispatcher Script se encargará de mantener esta configuración en cualquier red nueva."
+    echo "OK: DNS configurado como $DNS_PROVIDER_NAME."
+    echo "Nota: Se mantendra en redes nuevas via dispatcher."
 }

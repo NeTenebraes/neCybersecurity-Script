@@ -4,25 +4,25 @@
 install_aur_helper() {
     # --- LÓGICA AUR HELPER: DETECTAR O INSTALAR ---
     local helpers=("yay-bin" "paru" "yay")
-    AUR_HELPER=""
+    local aur_helper=""
 
     # 1. Intentar detectar un helper ya instalado
     for h in "paru" "yay"; do
         if command -v "$h" >/dev/null; then
-            AUR_HELPER="$h"
+            aur_helper="$h"
             break
         fi
     done
 
-    if [[ -n "$AUR_HELPER" ]]; then
-        log_ok "Se detectó '$AUR_HELPER' instalado."
-        if ! ask_yes_no "¿Deseas seguir usando $AUR_HELPER?" "y"; then
-            AUR_HELPER=""
+    if [[ -n "$aur_helper" ]]; then
+        log_ok "Se detectó '$aur_helper' instalado."
+        if ! ask_yes_no "¿Deseas seguir usando $aur_helper?" "y"; then
+            aur_helper=""
         fi
     fi
 
     # 2. Si no hay ninguno o el usuario decidió cambiarlo
-    if [[ -z "$AUR_HELPER" ]]; then
+    if [[ -z "$aur_helper" ]]; then
         echo -e "\n--- Instalación de AUR Helper ---"
         PS3="Selecciona cuál deseas instalar: "
         select opt in "${helpers[@]}" "Cancelar"; do
@@ -45,7 +45,7 @@ install_aur_helper() {
                     (cd "$build_dir" && makepkg -si --noconfirm)
                     rm -rf "$build_dir"
 
-                    AUR_HELPER="${opt%-bin}"
+                    aur_helper="${opt%-bin}"
                     break
                     ;;
                 "Cancelar")
@@ -57,15 +57,16 @@ install_aur_helper() {
         done
     fi
 
-    export AUR_HELPER
-    log_ok "Usando $AUR_HELPER para el resto de la instalación."
+    log_ok "Usando $aur_helper para el resto de la instalación."
+    echo "$aur_helper"
 }
 
 aur_install() {
-    install_aur_helper
+    local aur_helper
+    aur_helper=$(install_aur_helper)
     log_msg "Instalando paquetes AUR: $*"
 
-    if ! "$AUR_HELPER" -S --noconfirm "$@"; then
+    if ! "$aur_helper" -S --noconfirm "$@"; then
         log_err "Fallo instalando algunos paquetes AUR: $*"
         return 1
     fi

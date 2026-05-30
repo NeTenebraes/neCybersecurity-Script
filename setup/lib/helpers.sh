@@ -1,10 +1,5 @@
 #!/bin/bash
 # ==================== LOGGING ====================
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m'
-
 log_ok()  { echo "[OK] $1"; }
 log_msg() { echo "[MSG] $1"; }
 log_err() { echo "[ERR] $1" >&2; }
@@ -51,3 +46,12 @@ ask_yes_no() {
     done
 }
 
+require_sudo() {
+    sudo -k
+    if sudo -v; then
+        log_ok "Sesion sudo cacheada"
+    else
+        log_err "No se pudo obtener sudo"
+        exit 1
+    fi
+}

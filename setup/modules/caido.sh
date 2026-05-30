@@ -36,12 +36,14 @@ EOF
     CAIDOVERSION=$(curl -s "$CAIDO_GITHUB_API" | grep tag_name | sed -E 's/.*"([^"]+)".*/\1/')
     local CAIDOAPPIMAGE="$BINDIR/caido-desktop-${CAIDOVERSION}-linux-x86_64.AppImage"
 
-    if [[ ! -x "$CAIDOAPPIMAGE" ]]; then
-        log_msg "DESCARGANDO Caido v$CAIDOVERSION..."
+    if [[ ! -x "$CAIDOAPPIMAGE" ]] || [[ ! -f "$DIR/caidoversion.txt" ]] || [[ "$(cat "$DIR/caidoversion.txt")" != "$CAIDOVERSION" ]]; then
+        log_msg "DESCARGANDO Caido $CAIDOVERSION..."
         rm -f "$BINDIR/caido-desktop-"*.AppImage
         wget --timeout=60 "${CAIDO_BASE_URL}/${CAIDOVERSION}/caido-desktop-${CAIDOVERSION}-linux-x86_64.AppImage" -O "$CAIDOAPPIMAGE"
         chmod +x "$CAIDOAPPIMAGE"
         echo "$CAIDOVERSION" > "$DIR/caidoversion.txt"
+    else
+        log_ok "Caido ya actualizado ($CAIDOVERSION)."
     fi
 
     rm -f "$BINDIR/caido"
@@ -51,5 +53,5 @@ EOF
         echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$USERHOME/.bashrc"
     fi
 
-    log_ok "Caido OK → caido / Rofi / Menú"
+    log_ok "Caido OK"
 }

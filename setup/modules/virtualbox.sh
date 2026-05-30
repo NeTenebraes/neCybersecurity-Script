@@ -3,24 +3,36 @@
 # ==================== INSTALADOR VIRTUALBOX ====================
 install_virtualbox() {
     local TITLE="VirtualBox"
-    if check_cmd virtualbox && lsmod | grep -q vboxdrv && ip link show vboxnet0 &>/dev/null; then
-        log_ok "$TITLE + RED ✅ YA FUNCIONANDO"
+    if check_cmd virtualbox; then
+        log_ok "$TITLE YA INSTALADO"
+        sudo pacman -S --noconfirm --needed virtualbox-host-dkms "$KERNEL_HEADERS" >/dev/null
+        sudo dkms autoinstall --force >/dev/null 2>&1
+
+        if ! lsmod | grep -q '^vboxdrv'; then
+            sudo modprobe -r vboxnetadp vboxnetflt vboxdrv >/dev/null 2>&1 || true
+            sudo modprobe vboxdrv vboxnetflt vboxnetadp >/dev/null 2>&1
+        fi
+
+        sudo VBoxManage hostonlyif create >/dev/null 2>&1 || true
+        sudo usermod -aG vboxusers "$REALUSER"
+        create_vbox_service
+        log_ok "$TITLE actualizado"
         return 0
     fi
     local PKGS=("${PKGS_VIRTUALBOX[@]}" "$KERNEL_HEADERS")
     log_msg "Instalando: ${PKGS[*]}"
     if ! check_cmd virtualbox; then
-        sudo pacman -S --needed --noconfirm "${PKGS[@]}"
+        sudo pacman -S --needed --noconfirm "${PKGS[@]}" >/dev/null
     else
-        sudo pacman -S --noconfirm virtualbox-host-dkms "$KERNEL_HEADERS"
+        sudo pacman -S --noconfirm virtualbox-host-dkms "$KERNEL_HEADERS" >/dev/null
     fi
-    sudo dkms autoinstall --force
-    sudo modprobe -r vboxnetadp vboxnetflt vboxdrv 2>/dev/null || true
-    sudo modprobe vboxdrv vboxnetflt vboxnetadp
-    sudo VBoxManage hostonlyif create 2>/dev/null || true
+    sudo dkms autoinstall --force >/dev/null 2>&1
+    sudo modprobe -r vboxnetadp vboxnetflt vboxdrv >/dev/null 2>&1 || true
+    sudo modprobe vboxdrv vboxnetflt vboxnetadp >/dev/null 2>&1
+    sudo VBoxManage hostonlyif create >/dev/null 2>&1 || true
     sudo usermod -aG vboxusers "$REALUSER"
     create_vbox_service
-    log_ok "$TITLE ✅ LISTO + AUTO-START"
+    log_ok "$TITLE listo (auto-start)"
 }
 
 create_vbox_service() {
@@ -45,6 +57,6 @@ TimeoutSec=30
 WantedBy=multi-user.target
 EOF
     sudo systemctl daemon-reload
-    sudo systemctl enable --now vbox-modules
-    log_ok "✅ vbox-modules.service CREADO + ACTIVADO"
+    sudo systemctl enable --now vbox-modules >/dev/null
+    log_ok "vbox-modules.service creado y activado"
 }

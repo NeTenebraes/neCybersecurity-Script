@@ -48,11 +48,93 @@ setup_ssh_security() {
     log_ok "SSH hardening aplicado. Puerto nuevo: $new_port"
 
     if check_cmd ufw; then
+        cleanup_ufw_ssh_ports "$new_port"
         sudo ufw allow "$new_port"/tcp
-        sudo ufw delete allow 22/tcp 2>/dev/null || true
+        save_ssh_port "$new_port"
     fi
 
     sudo systemctl restart sshd
+}
+
+cleanup_ufw_ssh_ports() {
+    local new_port="$1"
+    local ports
+    local previous_port
+
+    previous_port=$(load_previous_ssh_port)
+    ports=$(get_ufw_allow_tcp_ports)
+
+    if [[ -n "$previous_port" ]]; then
+        ports=$(printf "%s\n%s\n" "$previous_port" "$ports" | sort -u)
+    fi
+
+    local port
+    for port in $ports; do
+        if [[ "$port" == "$new_port" ]]; then
+            continue
+        fi
+
+        if ! should_close_port "$port"; then
+            continue
+        fi
+
+        sudo ufw delete allow "$port"/tcp >/dev/null 2>&1 || true
+    done
+}
+
+should_close_port() {
+    local port="$1"
+    local process_info
+
+    process_info=$(get_process_for_port "$port")
+    if [[ -n "$process_info" ]]; then
+        log_msg "Puerto $port en uso por: $process_info"
+    else
+        log_msg "Puerto $port sin proceso escuchando"
+    fi
+
+    if ask_yes_no "Cerrar regla UFW para $port/tcp?" "n"; then
+        return 0
+    fi
+
+    return 1
+}
+
+get_ufw_allow_tcp_ports() {
+    sudo ufw status 2>/dev/null | awk '/ALLOW/ && $1 ~ /^[0-9]+\/tcp$/ { split($1, a, "/"); print a[1]; }'
+}
+
+get_process_for_port() {
+    local port="$1"
+    local pid
+    local comm
+
+    pid=$(sudo ss -tulpen 2>/dev/null | awk -v p=":$port" '$5 ~ p { if (match($0, /pid=([0-9]+)/, m)) { print m[1]; exit } }')
+    if [[ -z "$pid" ]]; then
+        return 0
+    fi
+
+    comm=$(ps -p "$pid" -o comm= 2>/dev/null)
+    if [[ -n "$comm" ]]; then
+        echo "$comm (pid $pid)"
+    else
+        echo "pid $pid"
+    fi
+}
+
+load_previous_ssh_port() {
+    local file="/etc/ssh/ssh_ports_opencode"
+
+    if [[ -f "$file" ]]; then
+        sudo cat "$file" 2>/dev/null | head -n1
+    fi
+}
+
+save_ssh_port() {
+    local port="$1"
+    local file="/etc/ssh/ssh_ports_opencode"
+
+    echo "$port" | sudo tee "$file" >/dev/null
 }
 
 find_free_port() {

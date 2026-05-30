@@ -6,6 +6,15 @@ install_vmware() {
 
     if check_cmd vmware; then
         log_ok "$TITLE YA INSTALADO"
+        sudo systemctl daemon-reload
+        systemctl list-unit-files vmware-networks.service &>/dev/null && \
+            sudo systemctl enable vmware-networks.service vmware-usbarbitrator.service
+
+        if ! lsmod | grep -q '^vmmon'; then
+            if ! sudo modprobe vmmon 2>/dev/null; then
+                sudo vmware-modconfig --console --install-all || true
+            fi
+        fi
         return 0
     fi
 
@@ -30,5 +39,5 @@ install_vmware() {
         sudo systemctl enable vmware-networks.service vmware-usbarbitrator.service
 
     sudo vmware-modconfig --console --install-all || true
-    log_ok "$TITLE ✅ OK. Ejecuta 'vmware' para setup inicial"
+    log_ok "$TITLE OK. Ejecuta 'vmware' para setup inicial"
 }

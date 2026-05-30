@@ -2,16 +2,10 @@
 
 # ==================== FIREWALL (UFW) ====================
 setup_firewall() {
-    local TITLE="🛡️ CONFIGURACIÓN DE FIREWALL (UFW)"
+    local TITLE="CONFIGURACION DE FIREWALL (UFW)"
 
-    if command -v ufw >/dev/null 2>&1 && sudo ufw status | grep -q "Status: active"; then
-        log_ok "UFW YA ACTIVO (saltando configuración)"
-
-        if sudo ufw status | grep -q "22.*ALLOW"; then
-            log_ok "SSH YA PERMITIDO (Puerto 22 ALLOW)"
-        else
-            log_msg "SSH CERRADO actualmente"
-        fi
+    if command -v ufw >/dev/null 2>&1 && sudo ufw status 2>/dev/null | grep -q "Status: active"; then
+        log_ok "UFW ya activo (saltando configuracion)"
         return 0
     fi
 
@@ -35,10 +29,10 @@ setup_firewall() {
     sudo systemctl enable --now ufw
 
     if sudo ufw status | grep -q "Status: active"; then
-        log_ok "✅ Firewall configurado y ACTIVO."
+        log_ok "Firewall configurado y ACTIVO."
         echo -e "\nEstado actual:"
         sudo ufw status verbose
     else
-        log_err "❌ Hubo un problema activando UFW."
+        log_err "Hubo un problema activando UFW."
     fi
 }
