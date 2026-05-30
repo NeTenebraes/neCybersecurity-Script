@@ -63,7 +63,7 @@ ensure_burp_installer() {
     local burp_sh="$burp_dir/$BURP_INSTALLER_NAME"
     local burp_version_file="$burp_dir/burp_version.txt"
     local min_size="$BURP_MIN_SIZE_BYTES"
-    local download_url="https://portswigger.net/burp/releases/download?product=community&version=${version}&type=Linux"
+    local download_url="https://portswigger.net/burp/releases/download?product=desktop&version=${version}&type=Linux"
     local needs_download="false"
 
     mkdir -p "$burp_dir"
@@ -140,11 +140,6 @@ install_burp() {
 
     if pacman -Q burpsuite &>/dev/null 2>&1; then
         log_ok "Burp detectado: AUR (burpsuite)"
-        return 0
-    fi
-
-    if flatpak list | grep -q burp; then
-        log_ok "Burp detectado: Flatpak"
         return 0
     fi
 
