@@ -81,7 +81,7 @@ ensure_burp_installer() {
     fi
 
     if [[ "$needs_download" == "true" ]]; then
-        log_msg "Descargando Burp Suite $version en $burp_dir..."
+        log_msg "Descargando Burp Suite $version en $burp_dir..." >&2
         local tmp_file="$burp_dir/burpsuite_community_linux.sh.tmp"
         if command -v wget >/dev/null; then
             wget -O "$tmp_file" "$download_url" || { log_err "DESCARGA DE BURP FALLO descargar desde: $download_url"; return 1; }
@@ -100,9 +100,9 @@ ensure_burp_installer() {
         mv "$tmp_file" "$burp_sh"
         chmod +x "$burp_sh"
         echo "$version" > "$burp_version_file"
-        log_ok "Instalador Burp actualizado: $burp_sh"
+        log_ok "Instalador Burp actualizado: $burp_sh" >&2
     else
-        log_ok "Instalador Burp ya actualizado: $burp_sh"
+        log_ok "Instalador Burp ya actualizado: $burp_sh" >&2
     fi
 
     echo "$burp_sh"
@@ -110,16 +110,76 @@ ensure_burp_installer() {
 
 run_burp_installer() {
     local burp_sh="$1"
-    if [[ -z "${DISPLAY:-}" ]]; then
-        log_err "DISPLAY no definido. Ejecuta el instalador manualmente: $burp_sh"
+    local display
+    local xauth
+
+    display="${DISPLAY:-}"
+    if [[ -z "$display" ]]; then
+        display=$(detect_display)
+    fi
+
+    xauth="$USERHOME/.Xauthority"
+    if [[ ! -f "$xauth" ]]; then
+        xauth=""
+    fi
+
+    if [[ -z "$display" ]]; then
+        log_err "DISPLAY no definido. Ejecuta el instalador desde una sesion grafica: $burp_sh"
         return 1
     fi
 
-    env \
-        _JAVA_AWT_WM_NONREPARENTING=1 \
-        _JAVA_OPTIONS='-Dawt.toolkit.name=MToolkit' \
-        QT_QPA_PLATFORM=xcb \
-        "$burp_sh"
+    if [[ $EUID -eq 0 ]]; then
+        if [[ -n "$xauth" ]]; then
+            sudo -u "$REALUSER" env \
+                DISPLAY="$display" \
+                XAUTHORITY="$xauth" \
+                _JAVA_AWT_WM_NONREPARENTING=1 \
+                _JAVA_OPTIONS='-Dawt.toolkit.name=MToolkit' \
+                QT_QPA_PLATFORM=xcb \
+                "$burp_sh"
+        else
+            sudo -u "$REALUSER" env \
+                DISPLAY="$display" \
+                _JAVA_AWT_WM_NONREPARENTING=1 \
+                _JAVA_OPTIONS='-Dawt.toolkit.name=MToolkit' \
+                QT_QPA_PLATFORM=xcb \
+                "$burp_sh"
+        fi
+    else
+        if [[ -n "$xauth" ]]; then
+            env \
+                DISPLAY="$display" \
+                XAUTHORITY="$xauth" \
+                _JAVA_AWT_WM_NONREPARENTING=1 \
+                _JAVA_OPTIONS='-Dawt.toolkit.name=MToolkit' \
+                QT_QPA_PLATFORM=xcb \
+                "$burp_sh"
+        else
+            env \
+                DISPLAY="$display" \
+                _JAVA_AWT_WM_NONREPARENTING=1 \
+                _JAVA_OPTIONS='-Dawt.toolkit.name=MToolkit' \
+                QT_QPA_PLATFORM=xcb \
+                "$burp_sh"
+        fi
+    fi
+}
+
+detect_display() {
+    local display
+
+    if [[ -n "${DISPLAY:-}" ]]; then
+        echo "$DISPLAY"
+        return 0
+    fi
+
+    display=$(ls /tmp/.X11-unix/X* 2>/dev/null | head -n1)
+    if [[ -n "$display" ]]; then
+        echo ":${display##*/X}"
+        return 0
+    fi
+
+    return 1
 }
 
 install_burp() {
@@ -145,7 +205,7 @@ install_burp() {
         return 0
     fi
 
-    log_ok "Burp no detectado. Preparando instalador en segundo plano..."
+    log_ok "Burp no detectado. Abriendo instalador..."
 
     local BURP_SH
     if ! BURP_SH=$(ensure_burp_installer "$BURP_VERSION"); then
