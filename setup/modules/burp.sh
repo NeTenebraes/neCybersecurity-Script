@@ -165,6 +165,12 @@ run_burp_installer() {
     fi
 }
 
+wait_for_burp_install() {
+    echo
+    log_msg "Cuando termine la instalacion de Burp, presiona Enter para continuar"
+    read -r
+}
+
 detect_display() {
     local display
 
@@ -215,6 +221,8 @@ install_burp() {
     if ! run_burp_installer "$BURP_SH"; then
         return 0
     fi
+
+    wait_for_burp_install
 
     if detect_burp_binary >/dev/null; then
         local DETECTED_BURP
