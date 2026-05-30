@@ -84,16 +84,16 @@ ensure_burp_installer() {
         log_msg "Descargando Burp Suite $version en $burp_dir..."
         local tmp_file="$burp_dir/burpsuite_community_linux.sh.tmp"
         if command -v wget >/dev/null; then
-            wget -O "$tmp_file" "$download_url" || { log_err "Fallo descarga"; return 1; }
+            wget -O "$tmp_file" "$download_url" || { log_err "DESCARGA DE BURP FALLO descargar desde: $download_url"; return 1; }
         else
-            curl -L -o "$tmp_file" "$download_url" || { log_err "Fallo descarga"; return 1; }
+            curl -L -o "$tmp_file" "$download_url" || { log_err "DESCARGA DE BURP FALLO descargar desde: $download_url"; return 1; }
         fi
 
         local tmp_size
         tmp_size=$(stat -c%s "$tmp_file" 2>/dev/null || echo 0)
         if (( tmp_size < min_size )); then
             rm -f "$tmp_file"
-            log_err "Descarga incompleta (<100MB)."
+            log_err "DESCARGA DE BURP FALLO descargar desde: $download_url"
             return 1
         fi
 
@@ -151,7 +151,9 @@ install_burp() {
     log_ok "Burp no detectado. Preparando instalador en segundo plano..."
 
     local BURP_SH
-    BURP_SH=$(ensure_burp_installer "$BURP_VERSION") || return 1
+    if ! BURP_SH=$(ensure_burp_installer "$BURP_VERSION"); then
+        return 0
+    fi
 
     start_background_burp_install "$BURP_SH"
     log_ok "Instalacion Burp en segundo plano. Log: ~/.local/share/burp/burp_install.log"
