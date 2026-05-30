@@ -23,18 +23,15 @@ get_latest_burp_version() {
 }
 
 detect_burp_binary() {
-    if [[ -x "$USERHOME/BurpSuiteCommunity/BurpSuiteCommunity" ]]; then
-        echo "$USERHOME/BurpSuiteCommunity/BurpSuiteCommunity"
-        return 0
-    fi
+    [[ -x "$USERHOME/BurpSuiteCommunity/BurpSuiteCommunity" ]] && { echo "$USERHOME/BurpSuiteCommunity/BurpSuiteCommunity"; return 0; }
+    [[ -x "$USERHOME/.local/BurpSuiteCommunity/BurpSuite" ]] && { echo "$USERHOME/.local/BurpSuiteCommunity/BurpSuite"; return 0; }
+    [[ -x "$USERHOME/.local/BurpSuiteCommunity/BurpSuiteCommunity" ]] && { echo "$USERHOME/.local/BurpSuiteCommunity/BurpSuiteCommunity"; return 0; }
+    [[ -x "/opt/BurpSuiteCommunity/BurpSuiteCommunity" ]] && { echo "/opt/BurpSuiteCommunity/BurpSuiteCommunity"; return 0; }
 
-    if [[ -x "/opt/BurpSuiteCommunity/BurpSuiteCommunity" ]]; then
-        echo "/opt/BurpSuiteCommunity/BurpSuiteCommunity"
-        return 0
-    fi
-
-    if find "$USERHOME" -maxdepth 3 -name "*BurpSuite*" -type f -executable 2>/dev/null | grep -q .; then
-        find "$USERHOME" -maxdepth 3 -name "*BurpSuite*" -type f -executable | head -1
+    local found
+    found=$(find "$USERHOME" -maxdepth 5 -name "BurpSuite" -type f -executable 2>/dev/null | head -n1)
+    if [[ -n "$found" ]]; then
+        echo "$found"
         return 0
     fi
 
@@ -193,21 +190,12 @@ install_burp() {
     local BURP_VERSION
     BURP_VERSION=$(get_latest_burp_version)
 
-    if detect_burp_binary >/dev/null; then
-        local DETECTED_BURP
-        DETECTED_BURP=$(detect_burp_binary)
+    local DETECTED_BURP
+    DETECTED_BURP=$(detect_burp_binary 2>/dev/null) || true
+
+    if [[ -n "$DETECTED_BURP" ]]; then
         log_ok "Burp detectado: $DETECTED_BURP"
         create_burp_wrapper "$DETECTED_BURP"
-        return 0
-    fi
-
-    if command -v burp &>/dev/null; then
-        log_ok "Burp detectado: ~/.local/bin/burp"
-        return 0
-    fi
-
-    if pacman -Q burpsuite &>/dev/null 2>&1; then
-        log_ok "Burp detectado: AUR (burpsuite)"
         return 0
     fi
 
@@ -224,12 +212,17 @@ install_burp() {
 
     wait_for_burp_install
 
-    if detect_burp_binary >/dev/null; then
-        local DETECTED_BURP
-        DETECTED_BURP=$(detect_burp_binary)
+    DETECTED_BURP=$(detect_burp_binary 2>/dev/null) || true
+
+    if [[ -z "$DETECTED_BURP" ]]; then
+        log_msg "Buscando Burp manualmente..."
+        DETECTED_BURP=$(find /home -maxdepth 5 -name "BurpSuite" -type f -executable 2>/dev/null | head -n1) || true
+    fi
+
+    if [[ -n "$DETECTED_BURP" ]]; then
         create_burp_wrapper "$DETECTED_BURP"
         log_ok "Burp instalado: $DETECTED_BURP"
     else
-        log_err "Burp no detectado despues de la instalacion"
+        log_err "Burp no detectado. Instalalo manualmente: $BURP_SH"
     fi
 }
