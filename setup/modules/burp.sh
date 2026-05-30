@@ -116,8 +116,15 @@ start_background_burp_install() {
         _JAVA_AWT_WM_NONREPARENTING=1 \
         _JAVA_OPTIONS='-Dawt.toolkit.name=MToolkit' \
         QT_QPA_PLATFORM=xcb \
-        "$burp_sh" --auto-install > "$log_file" 2>&1 &
+        "$burp_sh" > "$log_file" 2>&1 &
     disown
+}
+
+wait_for_burp_install() {
+    echo
+    log_msg "Termina la instalacion de Burp y presiona una tecla para continuar"
+    read -r -n 1
+    echo
 }
 
 install_burp() {
@@ -151,5 +158,16 @@ install_burp() {
     fi
 
     start_background_burp_install "$BURP_SH"
-    log_ok "Instalacion Burp en segundo plano. Log: ~/.local/share/burp/burp_install.log"
+    log_ok "Instalador Burp abierto en segundo plano. Log: ~/.local/share/burp/burp_install.log"
+
+    wait_for_burp_install
+
+    if detect_burp_binary >/dev/null; then
+        local DETECTED_BURP
+        DETECTED_BURP=$(detect_burp_binary)
+        create_burp_wrapper "$DETECTED_BURP"
+        log_ok "Burp instalado: $DETECTED_BURP"
+    else
+        log_err "Burp no detectado despues de la instalacion"
+    fi
 }
